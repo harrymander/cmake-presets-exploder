@@ -1,7 +1,7 @@
 import re
 from collections.abc import Mapping, Sequence
 from itertools import product
-from typing import Any, Literal, Optional, TypeVar, Union, cast
+from typing import Any, Literal, TypeVar, Union, cast
 
 from pydantic import (
     BaseModel,
@@ -136,16 +136,6 @@ class PresetGroup(_Model):
         description="Type of configuration preset, "
         "e.g. configure, build, test.",
     )
-    prefix: Optional[str] = Field(
-        None,
-        description="Prefix for preset names, "
-        "defaults to name of preset group.",
-    )
-    sep: Optional[str] = Field(
-        None,
-        description="Separator for preset names, "
-        "overrides separator set in matrix config.",
-    )
     inherits: list[str] = Field(
         [],
         description="Name of pre-existing configuration presets to inherit "
@@ -160,6 +150,8 @@ class PresetGroup(_Model):
         {},
         description="Template for generating configuration options.",
     )
+
+    _sep = "-"
 
     @field_validator("parameters", mode="after")
     @classmethod
@@ -209,23 +201,19 @@ class PresetGroup(_Model):
 
         return template
 
-    def _generate_presets_for_single_parameter(
-        self,
-        prefix: str,
-        sep: str,
-    ) -> list:
+    def _generate_presets_for_single_parameter(self, prefix: str) -> list:
         param_name, param_values = self._parameters_dict().popitem()
         template = self._get_template(param_name)
         return [
             {
-                "name": sep.join((prefix, param_value.name)),
+                "name": self._sep.join((prefix, param_value.name)),
                 **({"inherits": self.inherits} if self.inherits else {}),
                 **_expand_param_template(template, param_value),
             }
             for param_value in param_values
         ]
 
-    def _generate_base_presets(self, prefix: str, sep: str) -> list:
+    def _generate_base_presets(self, prefix: str) -> list:
         """
         Generate base presets for all individual parameters.
         """
@@ -236,7 +224,7 @@ class PresetGroup(_Model):
                 {
                     "name": _base_preset_name(
                         prefix,
-                        sep,
+                        self._sep,
                         param_name,
                         param_value,
                     ),
@@ -248,20 +236,20 @@ class PresetGroup(_Model):
 
         return presets
 
-    def generate_presets(self, prefix: str, sep: str) -> list:
+    def generate_presets(self, prefix: str) -> list:
         if len(self.parameters) == 1:
-            return self._generate_presets_for_single_parameter(prefix, sep)
+            return self._generate_presets_for_single_parameter(prefix)
 
-        presets = self._generate_base_presets(prefix, sep)
+        presets = self._generate_base_presets(prefix)
         parameters = self._parameters_dict()
         for param_values in product(*parameters.values()):
             bases = (
-                _base_preset_name(prefix, sep, param_name, param_value)
+                _base_preset_name(prefix, self._sep, param_name, param_value)
                 for param_name, param_value in zip(
                     parameters.keys(), param_values
                 )
             )
-            name = f"{prefix}{sep}{sep.join(v.name for v in param_values)}"
+            name = self._sep.join([prefix, *(v.name for v in param_values)])
             preset = {
                 "name": name,
                 "inherits": [*self.inherits, *bases],
@@ -273,11 +261,6 @@ class PresetGroup(_Model):
 
 class Exploder(_Model):
     version: Literal[0]
-    sep: str = Field(
-        "-",
-        description="Separator for generated preset names. Can be overridden "
-        "by 'sep' property in preset groups.",
-    )
     preset_groups: dict[str, PresetGroup] = Field(
         ...,
         description="Preset groups. Presets are generated from the Cartesian "
@@ -311,10 +294,7 @@ def explode_presets(
         raise ValueError(f"invalid '{vendor_name}' object: {e}") from e
 
     for name, group in exploder.preset_groups.items():
-        presets = group.generate_presets(
-            group.prefix or name,
-            group.sep or exploder.sep,
-        )
+        presets = group.generate_presets(name)
         template_json.setdefault(f"{group.type}Presets", []).extend(presets)
 
     if not include_vendor:
