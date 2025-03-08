@@ -89,6 +89,7 @@ def _generate_schema(ctx: click.Context, _, value):
     callback=_generate_schema,
     help="""Print JSON schema for the vendor object and exit.""",
 )
+@click.version_option()
 @click.pass_context
 def cli(
     ctx: click.Context,
