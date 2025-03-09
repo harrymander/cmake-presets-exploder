@@ -1,6 +1,7 @@
 # CMake Presets Exploder
 
 [![PyPI version](https://img.shields.io/pypi/v/cmake-presets-exploder)](https://pypi.org/project/cmake-presets-exploder/)
+[![Python versions](https://img.shields.io/pypi/pyversions/cmake-presets-exploder)](https://pypi.org/project/cmake-presets-exploder/)
 [![Tests status](https://github.com/harrymander/cmake-presets-exploder/actions/workflows/test.yml/badge.svg?event=push)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/harrymander/cmake-presets-exploder/blob/main/LICENSE)
 
