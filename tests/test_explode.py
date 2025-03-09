@@ -1134,3 +1134,42 @@ def test_preset_name_template_expansion_with_multiple_params() -> None:
         ]
     }
     assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_single_param_preset_name_template_fails_with_duplicate() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {"alpha": ["a", "b"]},
+                "nameTemplate": "configure",
+            }
+        },
+    }
+    with pytest.raises(
+        ValueError,
+        match=r"^duplicate preset name 'configure'",
+    ):
+        explode_presets(template_dict(vendor))
+
+
+def test_multi_param_preset_name_template_fails_with_duplicate() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "alpha": ["a", "b"],
+                    "num": ["1", "2"],
+                },
+                "nameTemplate": "configure $alpha",
+            }
+        },
+    }
+    with pytest.raises(
+        ValueError,
+        match=r"^duplicate preset name 'configure a'",
+    ):
+        explode_presets(template_dict(vendor))

@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from itertools import product
 from string import Template as _BaseStringTemplate
 from typing import Any, Literal, Optional, TypeVar, Union, cast
@@ -137,6 +137,18 @@ def _validate_parameter_list(
     return converted
 
 
+def _validate_preset_names(names: Iterable[str]) -> None:
+    unique = set()
+    for name in names:
+        if name in unique:
+            msg = (
+                f"duplicate preset name '{name}' "
+                "(did you include all parameters in name template?)"
+            )
+            raise ValueError(msg)
+        unique.add(name)
+
+
 class PresetGroup(_Model):
     type: str = Field(
         ...,
@@ -239,7 +251,7 @@ class PresetGroup(_Model):
     def _generate_presets_for_single_parameter(self, prefix: str) -> list:
         param_name, param_values = self._parameters_dict().popitem()
         template = self._get_template(param_name)
-        return [
+        presets = [
             {
                 "name": self._preset_name(prefix, {param_name: param_value}),
                 **({"inherits": self.inherits} if self.inherits else {}),
@@ -247,6 +259,8 @@ class PresetGroup(_Model):
             }
             for param_value in param_values
         ]
+        _validate_preset_names(preset["name"] for preset in presets)
+        return presets
 
     def _generate_base_presets(self, prefix: str) -> list:
         """
@@ -293,6 +307,7 @@ class PresetGroup(_Model):
             }
             presets.append(preset)
 
+        _validate_preset_names(preset["name"] for preset in presets)
         return presets
 
 
