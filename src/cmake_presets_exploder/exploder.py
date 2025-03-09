@@ -15,7 +15,7 @@ from pydantic.alias_generators import to_camel
 T = TypeVar("T")
 
 
-def _expand_jinja(s: str, **fmt_keys) -> str:
+def _expand_jinja(s: str, env: Mapping[str, Any]) -> str:
     try:
         import jinja2  # type: ignore
     except ImportError as e:
@@ -25,7 +25,7 @@ def _expand_jinja(s: str, **fmt_keys) -> str:
         )
         raise RuntimeError(msg) from e
 
-    return jinja2.Template(s).render(**fmt_keys)
+    return jinja2.Template(s).render(env)
 
 
 class _StringTemplate(_BaseStringTemplate):
@@ -33,13 +33,21 @@ class _StringTemplate(_BaseStringTemplate):
     braceidpattern = rf"(?a:{__ident}(?:\.{__ident})*)"
 
 
-def _expand_string_template(s: str, **fmt_keys: str) -> str:
+def _expand_string_template(
+    s: str,
+    mapping: Mapping[str, Any],
+    *,
+    jinja_env: Optional[Mapping[str, Any]] = None,
+) -> str:
     jinja_prefix = "{jinja}"
     if s.startswith(jinja_prefix):
-        return _expand_jinja(s.removeprefix(jinja_prefix), **fmt_keys)
+        return _expand_jinja(
+            s.removeprefix(jinja_prefix),
+            mapping if jinja_env is None else jinja_env,
+        )
 
     try:
-        return _StringTemplate(s).substitute(fmt_keys)
+        return _StringTemplate(s).substitute(mapping)
     except ValueError as e:
         msg = f"invalid template string: {s}"
         raise ValueError(msg) from e
@@ -48,23 +56,23 @@ def _expand_string_template(s: str, **fmt_keys: str) -> str:
         raise ValueError(msg) from None
 
 
-def _format_json_strings(obj: T, **fmt_keys: str) -> T:
+def _format_json_strings(obj: T, mapping: Mapping[str, Any]) -> T:
     r: Any
 
     if isinstance(obj, str):
-        r = _expand_string_template(obj, **fmt_keys)
+        r = _expand_string_template(obj, mapping)
         return r
 
     if isinstance(obj, Sequence):
-        r = [_format_json_strings(v, **fmt_keys) for v in obj]
+        r = [_format_json_strings(v, mapping) for v in obj]
         return r
 
     if isinstance(obj, Mapping):
         r = {}
         for k, v in obj.items():
             if isinstance(k, str):
-                k = _expand_string_template(k, **fmt_keys)
-            r[k] = _format_json_strings(v, **fmt_keys)
+                k = _expand_string_template(k, mapping)
+            r[k] = _format_json_strings(v, mapping)
         return r
 
     # obj is another type, return as-is
@@ -85,8 +93,10 @@ def _expand_param_template(
 ) -> dict:
     return _format_json_strings(
         template,
-        value=param_value.value,
-        name=param_value.name,
+        {
+            "value": param_value.value,
+            "name": param_value.name,
+        },
     )
 
 
@@ -147,6 +157,20 @@ def _validate_preset_names(names: Iterable[str]) -> None:
             )
             raise ValueError(msg)
         unique.add(name)
+
+
+class _JinjaParameterValue:
+    """
+    Wraps ParameterValue so that "{{ value }}" is equivalent to
+    "{{ value.name }}" in Jinja templates.
+    """
+
+    def __init__(self, value: ParameterValue):
+        self.name = value.name
+        self.value = value.value
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class PresetGroup(_Model):
@@ -237,6 +261,7 @@ class PresetGroup(_Model):
             return "-".join([prefix, *(v.name for v in param_values.values())])
 
         mapping = {}
+        jinja_env = {}
         for param_name, param_value in param_values.items():
             mapping.update(
                 {
@@ -245,8 +270,13 @@ class PresetGroup(_Model):
                     f"{param_name}.value": param_value.value,
                 }
             )
+            jinja_env[param_name] = _JinjaParameterValue(param_value)
 
-        return _expand_string_template(self.name_template, **mapping)
+        return _expand_string_template(
+            self.name_template,
+            mapping,
+            jinja_env=jinja_env,
+        )
 
     def _generate_presets_for_single_parameter(self, prefix: str) -> list:
         param_name, param_values = self._parameters_dict().popitem()
