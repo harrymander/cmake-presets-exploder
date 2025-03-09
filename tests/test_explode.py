@@ -254,9 +254,9 @@ def test_param_list_dict_values() -> None:
                             "value": "value2",
                         },
                     ]
-                }
+                },
             }
-        }
+        },
     }
     expected = {
         "configurePresets": [
@@ -281,9 +281,9 @@ def test_param_list_with_duplicate_fails() -> None:
                 "type": "configure",
                 "parameters": {
                     "param": ["a", "b", "b", "c"],
-                }
+                },
             }
-        }
+        },
     }
     with pytest.raises(ValueError, match=r"duplicate parameter name 'b'"):
         explode_presets(template_dict(vendor))
@@ -314,9 +314,9 @@ def test_param_list_dict_with_duplicate_names_fails() -> None:
                             "value": "b-value-2",
                         },
                     ],
-                }
+                },
             }
-        }
+        },
     }
     with pytest.raises(ValueError, match=r"duplicate parameter name 'b'"):
         explode_presets(template_dict(vendor))
