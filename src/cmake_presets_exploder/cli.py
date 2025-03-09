@@ -131,11 +131,14 @@ def cli(
         )
 
     template = _read_template_json(template_path, loader)
-    presets = explode_presets(
-        template,
-        include_vendor=include_vendor,
-        vendor_name=vendor_name,
-    )
+    try:
+        presets = explode_presets(
+            template,
+            include_vendor=include_vendor,
+            vendor_name=vendor_name,
+        )
+    except ValueError as e:
+        raise click.ClickException(str(e)) from None
 
     if verify:
         if _would_change_output(presets, output, indent, ignore_formatting):
