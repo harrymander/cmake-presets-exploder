@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from itertools import product
-from string import Template
-from typing import Any, Literal, TypeVar, Union, cast
+from string import Template as _BaseStringTemplate
+from typing import Any, Literal, Optional, TypeVar, Union, cast
 
 from pydantic import (
     BaseModel,
@@ -28,13 +28,18 @@ def _expand_jinja(s: str, **fmt_keys) -> str:
     return jinja2.Template(s).render(**fmt_keys)
 
 
-def _expand_string(s: str, **fmt_keys: str) -> str:
+class _StringTemplate(_BaseStringTemplate):
+    __ident = r"[_a-z][_a-z0-9]*"
+    braceidpattern = rf"(?a:{__ident}(?:\.{__ident})*)"
+
+
+def _expand_string_template(s: str, **fmt_keys: str) -> str:
     jinja_prefix = "{jinja}"
     if s.startswith(jinja_prefix):
         return _expand_jinja(s.removeprefix(jinja_prefix), **fmt_keys)
 
     try:
-        return Template(s).substitute(fmt_keys)
+        return _StringTemplate(s).substitute(fmt_keys)
     except KeyError as e:
         msg = f"unknown key {e} in format string: {s}"
         raise ValueError(msg) from None
@@ -44,7 +49,7 @@ def _format_json_strings(obj: T, **fmt_keys: str) -> T:
     r: Any
 
     if isinstance(obj, str):
-        r = _expand_string(obj, **fmt_keys)
+        r = _expand_string_template(obj, **fmt_keys)
         return r
 
     if isinstance(obj, Sequence):
@@ -55,7 +60,7 @@ def _format_json_strings(obj: T, **fmt_keys: str) -> T:
         r = {}
         for k, v in obj.items():
             if isinstance(k, str):
-                k = _expand_string(k, **fmt_keys)
+                k = _expand_string_template(k, **fmt_keys)
             r[k] = _format_json_strings(v, **fmt_keys)
         return r
 
@@ -136,6 +141,13 @@ class PresetGroup(_Model):
         description="Type of configuration preset, "
         "e.g. configure, build, test.",
     )
+    name_template: Optional[str] = Field(
+        None,
+        min_length=1,
+        description="Template string for constructing preset names. "
+        "By default, preset names are the group name followed by the "
+        "parameter value names, separated by '-'.",
+    )
     inherits: list[str] = Field(
         [],
         description="Name of pre-existing configuration presets to inherit "
@@ -201,12 +213,32 @@ class PresetGroup(_Model):
 
         return template
 
+    def _preset_name(
+        self,
+        prefix: str,
+        param_values: dict[str, ParameterValue],
+    ) -> str:
+        if self.name_template is None:
+            return "-".join([prefix, *(v.name for v in param_values.values())])
+
+        mapping = {}
+        for param_name, param_value in param_values.items():
+            mapping.update(
+                {
+                    param_name: param_value.name,
+                    f"{param_name}.name": param_value.name,
+                    f"{param_name}.value": param_value.value,
+                }
+            )
+
+        return _expand_string_template(self.name_template, **mapping)
+
     def _generate_presets_for_single_parameter(self, prefix: str) -> list:
         param_name, param_values = self._parameters_dict().popitem()
         template = self._get_template(param_name)
         return [
             {
-                "name": self._sep.join((prefix, param_value.name)),
+                "name": self._preset_name(prefix, {param_name: param_value}),
                 **({"inherits": self.inherits} if self.inherits else {}),
                 **_expand_param_template(template, param_value),
             }
@@ -249,9 +281,11 @@ class PresetGroup(_Model):
                     parameters.keys(), param_values
                 )
             )
-            name = self._sep.join([prefix, *(v.name for v in param_values)])
             preset = {
-                "name": name,
+                "name": self._preset_name(
+                    prefix,
+                    {n: v for n, v in zip(parameters.keys(), param_values)},
+                ),
                 "inherits": [*self.inherits, *bases],
             }
             presets.append(preset)

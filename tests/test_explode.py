@@ -1012,3 +1012,67 @@ def test_jinja_template_expansion() -> None:
         ]
     }
     assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_preset_name_template_expansion() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "alpha": ["a", "b"],
+                    "num": {
+                        "1": "numeric-value-1",
+                        "2": "numeric-value-2",
+                    },
+                },
+                "nameTemplate": (
+                    "template $alpha $num ${alpha.name} "
+                    "${num.name} ${alpha.value} ${num.value} "
+                    "$$alpha $$$alpha"
+                ),
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "configure-alpha-a",
+                "hidden": True,
+                "alpha": "a",
+            },
+            {
+                "name": "configure-alpha-b",
+                "hidden": True,
+                "alpha": "b",
+            },
+            {
+                "name": "configure-num-1",
+                "hidden": True,
+                "num": "numeric-value-1",
+            },
+            {
+                "name": "configure-num-2",
+                "hidden": True,
+                "num": "numeric-value-2",
+            },
+            {
+                "name": "template a 1 a 1 a numeric-value-1 $alpha $a",
+                "inherits": ["configure-alpha-a", "configure-num-1"],
+            },
+            {
+                "name": "template a 2 a 2 a numeric-value-2 $alpha $a",
+                "inherits": ["configure-alpha-a", "configure-num-2"],
+            },
+            {
+                "name": "template b 1 b 1 b numeric-value-1 $alpha $b",
+                "inherits": ["configure-alpha-b", "configure-num-1"],
+            },
+            {
+                "name": "template b 2 b 2 b numeric-value-2 $alpha $b",
+                "inherits": ["configure-alpha-b", "configure-num-2"],
+            },
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
