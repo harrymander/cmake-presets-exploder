@@ -235,7 +235,7 @@ another. To use it, add the following to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/harrymander/cmake-presets-exploder
-    rev: v0.3.1  # replace with desired tag (must be at least v0.3.1)
+    rev: v0.3.2  # replace with desired tag (must be at least v0.3.1)
     hooks:
       - id: cmake-presets-exploder
 ```
