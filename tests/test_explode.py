@@ -1041,7 +1041,38 @@ def test_jinja_template_expansion() -> None:
     assert_json_eq(explode_presets(template_dict(vendor)), expected)
 
 
-def test_preset_name_template_expansion() -> None:
+def test_preset_name_template_expansion_with_single_param() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "alpha": {"a": "a-value", "b": "b-value"},
+                },
+                "nameTemplate": (
+                    "template $alpha ${alpha.name} ${alpha.value} "
+                    "$$alpha $$$alpha"
+                ),
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "template a a a-value $alpha $a",
+                "alpha": "a-value",
+            },
+            {
+                "name": "template b b b-value $alpha $b",
+                "alpha": "b-value",
+            },
+        ],
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_preset_name_template_expansion_with_multiple_params() -> None:
     vendor = {
         "version": 0,
         "presetGroups": {
