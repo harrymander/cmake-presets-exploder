@@ -225,6 +225,21 @@ which supports more complex configuration generation. The project is still under
 active development, so if you find you have more complex needs, check out that
 project!
 
+## Pre-commit hook
+
+A [pre-commit](https://pre-commit.com/) hook is provided for running the tool
+when changes to the `CMakePresets.json` or `CMakePresetsMatrixTemplate.json`
+files are committed, preventing the files from going out of sync from one
+another. To use it, add the following to your `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/harrymander/cmake-presets-exploder
+    rev: v0.3.1  # replace with desired tag (must be at least v0.3.1)
+    hooks:
+      - id: cmake-presets-exploder
+```
+
 ## Installation
 
 Available from PyPI under `cmake-presets-exploder`, which provides a script with
