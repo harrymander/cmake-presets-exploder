@@ -237,6 +237,91 @@ def test_multiple_params_dict_values() -> None:
     assert_json_eq(explode_presets(template_dict(vendor)), expected)
 
 
+def test_param_list_dict_values() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "param": [
+                        {
+                            "name": "name1",
+                            "value": "value1",
+                        },
+                        {
+                            "name": "name2",
+                            "value": "value2",
+                        },
+                    ]
+                }
+            }
+        }
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "configure-name1",
+                "param": "value1",
+            },
+            {
+                "name": "configure-name2",
+                "param": "value2",
+            },
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_param_list_with_duplicate_fails() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "param": ["a", "b", "b", "c"],
+                }
+            }
+        }
+    }
+    with pytest.raises(ValueError, match=r"duplicate parameter name 'b'"):
+        explode_presets(template_dict(vendor))
+
+
+def test_param_list_dict_with_duplicate_names_fails() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "param": [
+                        {
+                            "name": "a",
+                            "value": "a-value",
+                        },
+                        {
+                            "name": "b",
+                            "value": "b-value",
+                        },
+                        {
+                            "name": "c",
+                            "value": "c-value",
+                        },
+                        {
+                            "name": "b",
+                            "value": "b-value-2",
+                        },
+                    ],
+                }
+            }
+        }
+    }
+    with pytest.raises(ValueError, match=r"duplicate parameter name 'b'"):
+        explode_presets(template_dict(vendor))
+
+
 def test_common_inherits() -> None:
     template = {
         "configurePresets": [
