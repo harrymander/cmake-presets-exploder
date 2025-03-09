@@ -103,7 +103,7 @@ named `CMakePresetsMatrixTemplate.json`:
           "templates": {
             "feature-x": {
               "cacheVariables": {
-                "ENABLE_FEATURE_X": "{value}"
+                "ENABLE_FEATURE_X": "$value"
               }
             }
           }

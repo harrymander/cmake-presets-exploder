@@ -1,6 +1,6 @@
-import re
 from collections.abc import Mapping, Sequence
 from itertools import product
+from string import Template
 from typing import Any, Literal, TypeVar, Union, cast
 
 from pydantic import (
@@ -29,12 +29,12 @@ def _expand_jinja(s: str, **fmt_keys) -> str:
 
 
 def _expand_string(s: str, **fmt_keys: str) -> str:
-    match = re.match(r"^\{\s*jinja\s*\}(.*)", s)
-    if match:
-        return _expand_jinja(match[1], **fmt_keys)
+    jinja_prefix = "{jinja}"
+    if s.startswith(jinja_prefix):
+        return _expand_jinja(s.removeprefix(jinja_prefix), **fmt_keys)
 
     try:
-        return s.format(**fmt_keys)
+        return Template(s).substitute(fmt_keys)
     except KeyError as e:
         msg = f"unknown key {e} in format string: {s}"
         raise ValueError(msg) from None
@@ -192,9 +192,9 @@ class PresetGroup(_Model):
 
     def _get_template(self, param_name: str) -> dict[str, Any]:
         template = self.templates.get(param_name)
-        param_name = param_name.replace("{", "{{").replace("}", "}}")
+        param_name = param_name.replace("$", "$$")
         if template is None:
-            return {param_name: "{value}"}
+            return {param_name: "$value"}
 
         if isinstance(template, str):
             return {param_name: template}

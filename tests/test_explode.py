@@ -523,205 +523,6 @@ def test_template_dict_with_no_copy_is_modified() -> None:
     assert_json_eq(template, expected)
 
 
-def test_template_string_in_single_param_dict_not_expanded() -> None:
-    vendor = {
-        "version": 0,
-        "presetGroups": {
-            "configure": {
-                "type": "configure",
-                "parameters": {
-                    "{param}": {
-                        "a{name}": "a{value}",
-                        "b{{name}}": "b{{value}}",
-                    },
-                },
-            }
-        },
-    }
-    expected = {
-        "configurePresets": [
-            {
-                "name": "configure-a{name}",
-                "{param}": "a{value}",
-            },
-            {
-                "name": "configure-b{{name}}",
-                "{param}": "b{{value}}",
-            },
-        ]
-    }
-    assert_json_eq(explode_presets(template_dict(vendor)), expected)
-
-
-def test_template_string_in_single_param_string_not_expanded() -> None:
-    vendor = {
-        "version": 0,
-        "presetGroups": {
-            "configure": {
-                "type": "configure",
-                "parameters": {
-                    "{param}": ["a{name}", "b{{name}}"],
-                },
-            }
-        },
-    }
-    expected = {
-        "configurePresets": [
-            {
-                "name": "configure-a{name}",
-                "{param}": "a{name}",
-            },
-            {
-                "name": "configure-b{{name}}",
-                "{param}": "b{{name}}",
-            },
-        ]
-    }
-    assert_json_eq(explode_presets(template_dict(vendor)), expected)
-
-
-def test_template_string_in_multi_params_dict_not_expanded() -> None:
-    vendor = {
-        "version": 0,
-        "presetGroups": {
-            "configure": {
-                "type": "configure",
-                "parameters": {
-                    "{alpha}": {
-                        "a{name}": "a{value}",
-                        "b{{name}}": "b{{value}}",
-                    },
-                    "{num}": {
-                        "1{name}": "1{value}",
-                        "2{{name}}": "2{{value}}",
-                    },
-                },
-            }
-        },
-    }
-    expected = {
-        "configurePresets": [
-            {
-                "name": "configure-{alpha}-a{name}",
-                "hidden": True,
-                "{alpha}": "a{value}",
-            },
-            {
-                "name": "configure-{alpha}-b{{name}}",
-                "hidden": True,
-                "{alpha}": "b{{value}}",
-            },
-            {
-                "name": "configure-{num}-1{name}",
-                "hidden": True,
-                "{num}": "1{value}",
-            },
-            {
-                "name": "configure-{num}-2{{name}}",
-                "hidden": True,
-                "{num}": "2{{value}}",
-            },
-            {
-                "name": "configure-a{name}-1{name}",
-                "inherits": [
-                    "configure-{alpha}-a{name}",
-                    "configure-{num}-1{name}",
-                ],
-            },
-            {
-                "name": "configure-a{name}-2{{name}}",
-                "inherits": [
-                    "configure-{alpha}-a{name}",
-                    "configure-{num}-2{{name}}",
-                ],
-            },
-            {
-                "name": "configure-b{{name}}-1{name}",
-                "inherits": [
-                    "configure-{alpha}-b{{name}}",
-                    "configure-{num}-1{name}",
-                ],
-            },
-            {
-                "name": "configure-b{{name}}-2{{name}}",
-                "inherits": [
-                    "configure-{alpha}-b{{name}}",
-                    "configure-{num}-2{{name}}",
-                ],
-            },
-        ]
-    }
-    assert_json_eq(explode_presets(template_dict(vendor)), expected)
-
-
-def test_template_string_in_multi_params_string_not_expanded() -> None:
-    vendor = {
-        "version": 0,
-        "presetGroups": {
-            "configure": {
-                "type": "configure",
-                "parameters": {
-                    "{alpha}": ["a{name}", "b{{name}}"],
-                    "{num}": ["1{name}", "2{{name}}"],
-                },
-            }
-        },
-    }
-    expected = {
-        "configurePresets": [
-            {
-                "name": "configure-{alpha}-a{name}",
-                "hidden": True,
-                "{alpha}": "a{name}",
-            },
-            {
-                "name": "configure-{alpha}-b{{name}}",
-                "hidden": True,
-                "{alpha}": "b{{name}}",
-            },
-            {
-                "name": "configure-{num}-1{name}",
-                "hidden": True,
-                "{num}": "1{name}",
-            },
-            {
-                "name": "configure-{num}-2{{name}}",
-                "hidden": True,
-                "{num}": "2{{name}}",
-            },
-            {
-                "name": "configure-a{name}-1{name}",
-                "inherits": [
-                    "configure-{alpha}-a{name}",
-                    "configure-{num}-1{name}",
-                ],
-            },
-            {
-                "name": "configure-a{name}-2{{name}}",
-                "inherits": [
-                    "configure-{alpha}-a{name}",
-                    "configure-{num}-2{{name}}",
-                ],
-            },
-            {
-                "name": "configure-b{{name}}-1{name}",
-                "inherits": [
-                    "configure-{alpha}-b{{name}}",
-                    "configure-{num}-1{name}",
-                ],
-            },
-            {
-                "name": "configure-b{{name}}-2{{name}}",
-                "inherits": [
-                    "configure-{alpha}-b{{name}}",
-                    "configure-{num}-2{{name}}",
-                ],
-            },
-        ]
-    }
-    assert_json_eq(explode_presets(template_dict(vendor)), expected)
-
-
 def test_single_param_template_string() -> None:
     vendor = {
         "version": 0,
@@ -732,7 +533,7 @@ def test_single_param_template_string() -> None:
                     "param": {"a": "A Value", "b": "B Value"},
                 },
                 "templates": {
-                    "param": "param-{name} = {value}",
+                    "param": "param-$name = $value",
                 },
             }
         },
@@ -763,7 +564,7 @@ def test_multiple_params_template_string() -> None:
                     "num": ["1", "2"],
                 },
                 "templates": {
-                    "alpha": "alpha-{name} = {value}",
+                    "alpha": "alpha-$name = ${value}value",
                 },
             }
         },
@@ -773,12 +574,12 @@ def test_multiple_params_template_string() -> None:
             {
                 "name": "configure-alpha-a",
                 "hidden": True,
-                "alpha": "alpha-a = A Value",
+                "alpha": "alpha-a = A Valuevalue",
             },
             {
                 "name": "configure-alpha-b",
                 "hidden": True,
-                "alpha": "alpha-b = B Value",
+                "alpha": "alpha-b = B Valuevalue",
             },
             {
                 "name": "configure-num-1",
@@ -823,8 +624,8 @@ def test_multiple_params_template_dict() -> None:
                 },
                 "templates": {
                     "alpha": {
-                        "cacheVariables_{name}": {
-                            "ALPHA": "{value}",
+                        "cacheVariables_$name": {
+                            "ALPHA": "$value",
                         },
                     },
                 },
@@ -889,9 +690,9 @@ def test_single_param_template_dict() -> None:
                 },
                 "templates": {
                     "param": {
-                        "cacheVariables_{name}": {
-                            "VALUE": "{value}",
-                            "NAME": "{name}",
+                        "cacheVariables_$name": {
+                            "VALUE": "$value",
+                            "NAME": "$name",
                         }
                     },
                 },
@@ -919,6 +720,230 @@ def test_single_param_template_dict() -> None:
     assert_json_eq(explode_presets(template_dict(vendor)), expected)
 
 
+def test_template_string_escape() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "param": ["a", "b", "c"],
+                },
+                "templates": {
+                    "param": "$value = $$value = $${value}",
+                },
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {"name": "configure-a", "param": "a = $value = ${value}"},
+            {"name": "configure-b", "param": "b = $value = ${value}"},
+            {"name": "configure-c", "param": "c = $value = ${value}"},
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_template_string_in_single_param_dict_not_expanded() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "$param": {
+                        "a$name": "a$value",
+                        "b$$name": "b$$value",
+                    },
+                },
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "configure-a$name",
+                "$param": "a$value",
+            },
+            {
+                "name": "configure-b$$name",
+                "$param": "b$$value",
+            },
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_template_string_in_single_param_string_not_expanded() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "$param": ["a$name", "b$$name"],
+                },
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "configure-a$name",
+                "$param": "a$name",
+            },
+            {
+                "name": "configure-b$$name",
+                "$param": "b$$name",
+            },
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_template_string_in_multi_params_dict_not_expanded() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "$alpha": {
+                        "a$name": "a$value",
+                        "b$$name": "b$$value",
+                    },
+                    "$num": {
+                        "1$name": "1$value",
+                        "2$$name": "2$$value",
+                    },
+                },
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "configure-$alpha-a$name",
+                "hidden": True,
+                "$alpha": "a$value",
+            },
+            {
+                "name": "configure-$alpha-b$$name",
+                "hidden": True,
+                "$alpha": "b$$value",
+            },
+            {
+                "name": "configure-$num-1$name",
+                "hidden": True,
+                "$num": "1$value",
+            },
+            {
+                "name": "configure-$num-2$$name",
+                "hidden": True,
+                "$num": "2$$value",
+            },
+            {
+                "name": "configure-a$name-1$name",
+                "inherits": [
+                    "configure-$alpha-a$name",
+                    "configure-$num-1$name",
+                ],
+            },
+            {
+                "name": "configure-a$name-2$$name",
+                "inherits": [
+                    "configure-$alpha-a$name",
+                    "configure-$num-2$$name",
+                ],
+            },
+            {
+                "name": "configure-b$$name-1$name",
+                "inherits": [
+                    "configure-$alpha-b$$name",
+                    "configure-$num-1$name",
+                ],
+            },
+            {
+                "name": "configure-b$$name-2$$name",
+                "inherits": [
+                    "configure-$alpha-b$$name",
+                    "configure-$num-2$$name",
+                ],
+            },
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_template_string_in_multi_params_string_not_expanded() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "$alpha": ["a$name", "b$$name"],
+                    "$num": ["1$name", "2$$name"],
+                },
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "configure-$alpha-a$name",
+                "hidden": True,
+                "$alpha": "a$name",
+            },
+            {
+                "name": "configure-$alpha-b$$name",
+                "hidden": True,
+                "$alpha": "b$$name",
+            },
+            {
+                "name": "configure-$num-1$name",
+                "hidden": True,
+                "$num": "1$name",
+            },
+            {
+                "name": "configure-$num-2$$name",
+                "hidden": True,
+                "$num": "2$$name",
+            },
+            {
+                "name": "configure-a$name-1$name",
+                "inherits": [
+                    "configure-$alpha-a$name",
+                    "configure-$num-1$name",
+                ],
+            },
+            {
+                "name": "configure-a$name-2$$name",
+                "inherits": [
+                    "configure-$alpha-a$name",
+                    "configure-$num-2$$name",
+                ],
+            },
+            {
+                "name": "configure-b$$name-1$name",
+                "inherits": [
+                    "configure-$alpha-b$$name",
+                    "configure-$num-1$name",
+                ],
+            },
+            {
+                "name": "configure-b$$name-2$$name",
+                "inherits": [
+                    "configure-$alpha-b$$name",
+                    "configure-$num-2$$name",
+                ],
+            },
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
 def test_unknown_parameter_in_template_fails() -> None:
     vendor = {
         "version": 0,
@@ -927,7 +952,7 @@ def test_unknown_parameter_in_template_fails() -> None:
                 "type": "configure",
                 "parameters": {"alpha": ["a", "b", "c"]},
                 "templates": {
-                    "numeric": "{value}",
+                    "numeric": "$value",
                 },
             }
         },
@@ -943,7 +968,7 @@ def test_unknown_template_string_fails() -> None:
             "configure": {
                 "type": "configure",
                 "parameters": {"param": ["a"]},
-                "templates": {"param": "param-{unknown} = {value}"},
+                "templates": {"param": "param-$unknown = $value"},
             }
         },
     }
@@ -951,7 +976,7 @@ def test_unknown_template_string_fails() -> None:
         ValueError,
         match=(
             r"^unknown key 'unknown' in format string: "
-            r"param-{unknown} = {value}$"
+            r"param-\$unknown = \$value$"
         ),
     ):
         explode_presets(template_dict(vendor))
