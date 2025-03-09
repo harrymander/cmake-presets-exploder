@@ -40,8 +40,11 @@ def _expand_string_template(s: str, **fmt_keys: str) -> str:
 
     try:
         return _StringTemplate(s).substitute(fmt_keys)
+    except ValueError as e:
+        msg = f"invalid template string: {s}"
+        raise ValueError(msg) from e
     except KeyError as e:
-        msg = f"unknown key {e} in format string: {s}"
+        msg = f"unknown key {e} in template string: {s}"
         raise ValueError(msg) from None
 
 

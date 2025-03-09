@@ -975,9 +975,36 @@ def test_unknown_template_string_fails() -> None:
     with pytest.raises(
         ValueError,
         match=(
-            r"^unknown key 'unknown' in format string: "
+            r"^unknown key 'unknown' in template string: "
             r"param-\$unknown = \$value$"
         ),
+    ):
+        explode_presets(template_dict(vendor))
+
+
+@pytest.mark.parametrize(
+    "invalid_template",
+    (
+        "$",
+        "${param!name}",
+        "${{param}}",
+        "$(param.name)",
+    ),
+)
+def test_invalid_template_string_fails(invalid_template: str) -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {"param": ["a"]},
+                "templates": {"param": invalid_template},
+            }
+        },
+    }
+    with pytest.raises(
+        ValueError,
+        match=rf"^invalid template string: {re.escape(invalid_template)}$",
     ):
         explode_presets(template_dict(vendor))
 
