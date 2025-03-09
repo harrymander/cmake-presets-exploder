@@ -351,21 +351,24 @@ class Exploder(_Model):
 
 
 def explode_presets(
-    template_json: Any,
+    template_json: object,
     *,
     vendor_name: str = "exploder",
     include_vendor: bool = False,
     copy: bool = True,
 ) -> dict:
     if not isinstance(template_json, dict):
-        raise ValueError("template must be a dictionary")
+        raise ValueError("template must be a JSON object")
 
     if copy:
         template_json = template_json.copy()
 
-    vendor_json = template_json.get("vendor")
+    vendor_json: object = template_json.get("vendor")
     if not vendor_json:
         raise ValueError("template missing 'vendor' property")
+
+    if not isinstance(vendor_json, dict):
+        raise ValueError("'vendor' must be a JSON object")
     exploder_json = vendor_json.get(vendor_name)
     if not exploder_json:
         raise ValueError(f"vendor object missing '{vendor_name}' property")

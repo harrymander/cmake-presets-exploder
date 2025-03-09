@@ -80,6 +80,38 @@ def test_fails_with_invalid_version() -> None:
         explode_presets(template_dict(vendor))
 
 
+def test_fails_if_template_not_an_object() -> None:
+    with pytest.raises(ValueError, match=r"^template must be a JSON object$"):
+        explode_presets(["Not an object"])
+
+
+def test_fails_if_missing_vendor_object() -> None:
+    with pytest.raises(
+        ValueError,
+        match=r"^template missing 'vendor' property$",
+    ):
+        explode_presets({"Vendor": {}})
+
+
+@pytest.mark.parametrize("vendor_name", (None, "custom"))
+def test_fails_if_vendor_object_missing_exploder_field(
+    vendor_name: Optional[str],
+) -> None:
+    kw: dict = {} if vendor_name is None else {"vendor_name": vendor_name}
+    if not vendor_name:
+        vendor_name = "exploder"
+    with pytest.raises(
+        ValueError,
+        match=rf"^vendor object missing '{vendor_name}' property$",
+    ):
+        explode_presets({"vendor": {vendor_name: {}}}, **kw)
+
+
+def test_fails_if_vendor_not_an_object() -> None:
+    with pytest.raises(ValueError, match=r"^'vendor' must be a JSON object$"):
+        explode_presets({"vendor": ["Not an object"]})
+
+
 def test_single_param_with_single_list_value() -> None:
     vendor = {
         "version": 0,
