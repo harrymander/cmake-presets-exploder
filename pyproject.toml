@@ -6,7 +6,7 @@ description = "Automatically generate combinations of different CMake Presets op
 authors = [
     { name = "Harry Mander", email = "harrymander96@gmail.com" }
 ]
-version = "0.3.0"
+version = "0.3.1"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python",
