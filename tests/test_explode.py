@@ -1020,7 +1020,8 @@ def test_jinja_template_expansion() -> None:
                 },
                 "templates": {
                     "param": (
-                        "{jinja}param-{{ name * 3 }} = {{ value | upper }}"
+                        "{jinja}param-{{ name * 3 }} = {{ value | upper }} "
+                        "${name} $name $$name"
                     ),
                 },
             }
@@ -1030,11 +1031,11 @@ def test_jinja_template_expansion() -> None:
         "configurePresets": [
             {
                 "name": "configure-a",
-                "param": "param-aaa = A VALUE",
+                "param": "param-aaa = A VALUE ${name} $name $$name",
             },
             {
                 "name": "configure-b",
-                "param": "param-bbb = B VALUE",
+                "param": "param-bbb = B VALUE ${name} $name $$name",
             },
         ]
     }
