@@ -112,6 +112,22 @@ def test_fails_if_vendor_not_an_object() -> None:
         explode_presets({"vendor": ["Not an object"]})
 
 
+def test_empty_param_does_not_generate_presets() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "param1": [],
+                    "param2": [],
+                },
+            }
+        },
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), {})
+
+
 def test_single_param_with_single_list_value() -> None:
     vendor = {
         "version": 0,

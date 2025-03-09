@@ -380,7 +380,10 @@ def explode_presets(
 
     for name, group in exploder.preset_groups.items():
         presets = group.generate_presets(name)
-        template_json.setdefault(f"{group.type}Presets", []).extend(presets)
+        if presets:
+            template_json.setdefault(f"{group.type}Presets", []).extend(
+                presets
+            )
 
     if not include_vendor:
         del template_json["vendor"][vendor_name]
