@@ -14,7 +14,10 @@ def _generate_schema(ctx: click.Context, _, value):
     if not value or ctx.resilient_parsing:
         return
 
-    click.echo(json.dumps(Exploder.model_json_schema(), indent=2))
+    indent = ctx.params.get("indent", 2)
+    if indent < 0:
+        indent = None
+    click.echo(json.dumps(Exploder.model_json_schema(), indent=indent))
     ctx.exit(0)
 
 
@@ -50,6 +53,7 @@ def _generate_schema(ctx: click.Context, _, value):
     "--indent",
     "-i",
     type=int,
+    is_eager=True,
     default=2,
     show_default=True,
     help="""JSON indent size in spaces; pass negative number for no
