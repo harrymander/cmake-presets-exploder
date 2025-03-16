@@ -571,7 +571,7 @@ def test_template_dict_with_no_copy_is_modified() -> None:
     assert_json_eq(template, expected)
 
 
-def test_single_param_template_string() -> None:
+def test_single_param_template_single_value_string() -> None:
     vendor = {
         "version": 0,
         "presetGroups": {
@@ -601,7 +601,37 @@ def test_single_param_template_string() -> None:
     assert_json_eq(explode_presets(template_dict(vendor)), expected)
 
 
-def test_multiple_params_template_string() -> None:
+def test_single_param_template_single_value_list() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "param": {"a": "A Value", "b": "B Value"},
+                },
+                "templates": {
+                    "param": ["param-$name = $value", 1, 2],
+                },
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "configure-a",
+                "param": ["param-a = A Value", 1, 2],
+            },
+            {
+                "name": "configure-b",
+                "param": ["param-b = B Value", 1, 2],
+            },
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_multiple_params_template_single_value_string() -> None:
     vendor = {
         "version": 0,
         "presetGroups": {
@@ -628,6 +658,65 @@ def test_multiple_params_template_string() -> None:
                 "name": "configure-alpha-b",
                 "hidden": True,
                 "alpha": "alpha-b = B Valuevalue",
+            },
+            {
+                "name": "configure-num-1",
+                "hidden": True,
+                "num": "1",
+            },
+            {
+                "name": "configure-num-2",
+                "hidden": True,
+                "num": "2",
+            },
+            {
+                "name": "configure-a-1",
+                "inherits": ["configure-alpha-a", "configure-num-1"],
+            },
+            {
+                "name": "configure-a-2",
+                "inherits": ["configure-alpha-a", "configure-num-2"],
+            },
+            {
+                "name": "configure-b-1",
+                "inherits": ["configure-alpha-b", "configure-num-1"],
+            },
+            {
+                "name": "configure-b-2",
+                "inherits": ["configure-alpha-b", "configure-num-2"],
+            },
+        ]
+    }
+    assert_json_eq(explode_presets(template_dict(vendor)), expected)
+
+
+def test_multiple_params_template_single_value_list() -> None:
+    vendor = {
+        "version": 0,
+        "presetGroups": {
+            "configure": {
+                "type": "configure",
+                "parameters": {
+                    "alpha": {"a": "A Value", "b": "B Value"},
+                    "num": ["1", "2"],
+                },
+                "templates": {
+                    "alpha": [1, 2, "alpha-$name = ${value}value", "${name}"],
+                },
+            }
+        },
+    }
+    expected = {
+        "configurePresets": [
+            {
+                "name": "configure-alpha-a",
+                "hidden": True,
+                "alpha": [1, 2, "alpha-a = A Valuevalue", "a"],
+            },
+            {
+                "name": "configure-alpha-b",
+                "hidden": True,
+                "alpha": [1, 2, "alpha-b = B Valuevalue", "b"],
             },
             {
                 "name": "configure-num-1",
