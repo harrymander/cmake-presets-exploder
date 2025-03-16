@@ -208,6 +208,27 @@ class _JinjaParameterValue:
         return self.name
 
 
+def _template_value_discriminator(value: Any) -> Optional[str]:
+    if isinstance(value, str):
+        return "str"
+    if isinstance(value, Mapping):
+        return "dict"
+    return None
+
+
+TemplateValue = Annotated[
+    Union[
+        Annotated[str, Tag("str")],
+        Annotated[dict, Tag("dict")],
+    ],
+    Discriminator(
+        _template_value_discriminator,
+        custom_error_type="invalid_template_value",
+        custom_error_message="Input should be a valid string or dictionary",
+    ),
+]
+
+
 class PresetGroup(_Model):
     type: str = Field(
         ...,
@@ -232,7 +253,7 @@ class PresetGroup(_Model):
         min_length=1,
         description="Parameters to generate presets from.",
     )
-    templates: dict[str, Union[dict, str]] = Field(
+    templates: dict[str, TemplateValue] = Field(
         {},
         description="Template for generating configuration options.",
     )
