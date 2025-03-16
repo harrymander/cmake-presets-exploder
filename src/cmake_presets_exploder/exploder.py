@@ -1,12 +1,14 @@
 from collections.abc import Iterable, Mapping, Sequence
 from itertools import product
 from string import Template as _BaseStringTemplate
-from typing import Any, Literal, Optional, TypeVar, Union, cast
+from typing import Annotated, Any, Literal, Optional, TypeVar, Union, cast
 
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Discriminator,
     Field,
+    Tag,
     field_validator,
     model_validator,
 )
@@ -109,11 +111,44 @@ def _base_preset_name(
     return sep.join((prefix, param_name, param_value.name))
 
 
-ParameterValuesList = Union[dict[str, str], list[str], list[ParameterValue]]
+def _parameter_values_discriminator(
+    values: "ParameterValues",
+) -> Optional[str]:
+    # The types of dict keys/values or list values do not actually have to be
+    # strings (e.g. as in dict[str, str]), as Pydantic will check this. The
+    # checks for dict and list are just to guide Pydantic to give a more
+    # specific error message.
+
+    if isinstance(values, Mapping):
+        return "dict[str, str]"
+
+    if isinstance(values, Sequence):
+        if values and isinstance(values[0], dict):
+            return "list[dict]"
+        return "list[str]"
+
+    return None
 
 
-def _validate_parameter_list(
-    parameters: ParameterValuesList,
+# Using an explicit discriminator improves the error message: without one
+# Pydantic would give a separate validation error for each type in the union,
+# leading to verbose errors.
+ParameterValues = Annotated[
+    Union[
+        Annotated[dict[str, str], Tag("dict[str, str]")],
+        Annotated[list[str], Tag("list[str]")],
+        Annotated[list[ParameterValue], Tag("list[dict]")],
+    ],
+    Discriminator(
+        _parameter_values_discriminator,
+        custom_error_type="invalid_parameter_values",
+        custom_error_message="Invalid parameter values",
+    ),
+]
+
+
+def _validate_parameter_value_list(
+    parameters: ParameterValues,
 ) -> list[ParameterValue]:
     """
     Convert parameter to a list of ParameterValues, checking that the
@@ -192,7 +227,7 @@ class PresetGroup(_Model):
         description="Name of pre-existing configuration presets to inherit "
         "in all generated presets.",
     )
-    parameters: dict[str, ParameterValuesList] = Field(
+    parameters: dict[str, ParameterValues] = Field(
         ...,
         min_length=1,
         description="Parameters to generate presets from.",
@@ -208,15 +243,17 @@ class PresetGroup(_Model):
     @classmethod
     def _validate_parameters(
         cls,
-        parameters: dict[str, ParameterValuesList],
+        parameters: dict[str, ParameterValues],
     ) -> dict[str, list[ParameterValue]]:
         """
         Narrow the type of the `parameters` member to
-        `dict[str, list[ParameterValue]]`. We keep the `ParameterValuesList`
+        `dict[str, list[ParameterValue]]`. We keep the `ParameterValues`
         in the type annotation so that the JSON schema type is correctly
         specified.
         """
-        return {k: _validate_parameter_list(v) for k, v in parameters.items()}
+        return {
+            k: _validate_parameter_value_list(v) for k, v in parameters.items()
+        }
 
     def _parameters_dict(self) -> dict[str, list[ParameterValue]]:
         """
