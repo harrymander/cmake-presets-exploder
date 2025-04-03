@@ -8,6 +8,13 @@
 A simple Python tool to automatically generate combinations of different CMake
 Presets options.
 
+## Table of contents
+
+1. [Motivation and basic usage](#motivation-and-basic-usage)
+2. [Other tools](#other-tools)
+3. [Pre-commit hook](#pre-commit-hook)
+4. [Installation](#installation)
+
 ## Motivation and basic usage
 
 [CMake Presets](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html)
