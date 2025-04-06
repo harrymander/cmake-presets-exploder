@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import Optional
 
 import pytest
@@ -307,4 +308,37 @@ def test_verify_with_ignore_formatting_does_not_fail_with_different_prop_order(
     assert res.exit_code == 0, res.output
     assert original_presets == generated_presets.presets.read_text(), (
         "File changed"
+    )
+
+
+def test_toml_error(runner: CliRunner) -> None:
+    res = runner.invoke(
+        cli,
+        ["--loader=toml", "-"],
+        input='no-val" =\n',
+    )
+    assert res.exit_code != 0
+    expected_error = "Expected '=' after a key in a key/value pair"
+    assert res.output == dedent(
+        f"""\
+        Error: TOML parse error: <stdin>, line 1, col 7: {expected_error}
+         1 | no-val" =
+           |       ^
+        """
+    )
+
+
+def test_toml_error_at_end_of_document(runner: CliRunner) -> None:
+    res = runner.invoke(
+        cli,
+        ["--loader=toml", "-"],
+        input='"unterminated string',
+    )
+    assert res.exit_code != 0
+    assert res.output == dedent(
+        """\
+        Error: TOML parse error: <stdin>, line 1, col 21: Unterminated string
+         1 | "unterminated string
+           |                     ^
+        """
     )

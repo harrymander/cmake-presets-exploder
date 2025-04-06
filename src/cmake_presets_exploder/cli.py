@@ -218,22 +218,19 @@ def _load_yaml(text: str, path: str) -> object:
         raise click.ClickException(f"YAML parse error: {msg}") from None
 
 
-def _parse_toml_err_msg(msg: str) -> Optional[tuple[str, int, int]]:
+def _parse_toml_err_msg(
+    msg: str,
+) -> Optional[tuple[str, Optional[int], Optional[int]]]:
+    loc = r"(?:line\ (?P<lineno>\d+),\ col(?:umn)?\ (?P<colno>\d+))"
     match = re.match(
-        r"""
-        ^(?P<msg>.+?)\ \(at\ (?:
-            (?P<end>end of document)|
-            line\ (?P<lineno>\d+),\ col(?:umn)?\ (?P<colno>\d+)
-        )\)$
-        """,
+        rf"^(?P<msg>.+?) \(at (?:(?P<end>end of document)|{loc})\)",
         msg,
-        flags=re.VERBOSE,
     )
     if not match:
         return None
 
     if match.group("end"):
-        lineno = colno = -1
+        lineno = colno = None
     else:
         lineno = int(match.group("lineno"))
         colno = int(match.group("colno"))
@@ -309,18 +306,14 @@ def _format_parse_error(
             raise ValueError("lineno must be >= 0")
         if colno < 0:
             raise ValueError("colno must be >= 0")
-        pos_msg = f"line {lineno + 1}, col {colno + 1}"
     else:
         lineno = len(lines) - 1
         colno = len(lines[-1])
-        if colno:
-            colno -= 1
-        pos_msg = "end of document"
 
     start_line = max(0, lineno - lines_before)
     lineno_str_width = len(str(lineno + 1))
     lines = lines[start_line : lineno + 1]
-    msg = [f"{path}, {pos_msg}: {error}"]
+    msg = [f"{path}, line {lineno + 1}, col {colno + 1}: {error}"]
     for n, line in enumerate(lines, start=start_line):
         margin = f" {n + 1:>{lineno_str_width}}"
         if n == lineno and len(line) > colno:
