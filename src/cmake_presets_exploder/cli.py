@@ -178,7 +178,7 @@ def _load_json(text: str, path: str) -> object:
     try:
         return json.loads(text)
     except json.JSONDecodeError as error:
-        msg = _parse_error_msg(
+        msg = _format_parse_error(
             text=text,
             path=path,
             error=error.msg,
@@ -207,7 +207,7 @@ def _load_yaml(text: str, path: str) -> object:
             if pos is None:
                 msg = str(err)
             else:
-                msg = _parse_error_msg(
+                msg = _format_parse_error(
                     text=text,
                     path=path,
                     error=err.problem or str(err),
@@ -241,7 +241,7 @@ def _parse_toml_err_msg(msg: str) -> Optional[tuple[str, int, int]]:
     return match.group("msg"), lineno, colno
 
 
-def _toml_err_msg(err: Exception, text: str, path: str) -> str:
+def _format_toml_parse_error(err: Exception, text: str, path: str) -> str:
     lineno: Optional[int] = getattr(err, "lineno", None)
     colno: Optional[int] = getattr(err, "colno", None)
     if lineno is None or colno is None:
@@ -257,7 +257,7 @@ def _toml_err_msg(err: Exception, text: str, path: str) -> str:
     else:
         pos = (lineno - 1, colno - 1)
 
-    return _parse_error_msg(
+    return _format_parse_error(
         text=text,
         path=path,
         error=msg,
@@ -283,11 +283,11 @@ def _load_toml(text: str, path: str) -> dict:
     try:
         return tomllib.loads(text)
     except tomllib.TOMLDecodeError as err:
-        msg = _toml_err_msg(err, text, path)
+        msg = _format_toml_parse_error(err, text, path)
         raise click.ClickException(f"TOML parse error: {msg}") from None
 
 
-def _parse_error_msg(
+def _format_parse_error(
     *,
     text: str,
     path: str,
