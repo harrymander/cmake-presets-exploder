@@ -16,7 +16,8 @@ jobs:
     strategy:
       matrix:
         pyversion: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-    name: Test / Python ${{ matrix.pyversion }}
+        dependency-resolution: [locked, lowest-direct, highest]
+    name: Test / Python ${{ matrix.pyversion }} / ${{ matrix.dependency-resolution }} dependencies
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -28,10 +29,20 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
         with:
-          enable-cache: true
+          version: "0.6.12"
+      - name: Resolve ${{ matrix.dependency-resolution }} dependencies
+        if: matrix.dependency-resolution != 'locked'
+        run: rm uv.lock && uv lock --resolution ${{ matrix.dependency-resolution }}
+      - name: Restore uv cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-${{ matrix.dependency-resolution }}-${{ hashFiles('uv.lock') }}
       - name: Install dependencies
-        run: uv sync --all-extras --locked
+        run: uv sync --all-extras --frozen
       - name: Type checking
-        run: uv run mypy .
+        run: uv run --frozen mypy .
       - name: Run tests
-        run: uv run pytest -v
+        run: uv run --frozen pytest -v
+      - name: Optimise uv cache
+        run: uv cache prune --ci
