@@ -9,12 +9,14 @@ import click
 
 from cmake_presets_exploder import Exploder, explode_presets
 
+_DEFAULT_JSON_OUTPUT_INDENT = 2
+
 
 def _generate_schema(ctx: click.Context, _, value):
     if not value or ctx.resilient_parsing:
         return
 
-    indent = ctx.params.get("indent", 2)
+    indent = ctx.params.get("indent", _DEFAULT_JSON_OUTPUT_INDENT)
     if indent < 0:
         indent = None
     click.echo(json.dumps(Exploder.model_json_schema(), indent=indent))
@@ -54,7 +56,7 @@ def _generate_schema(ctx: click.Context, _, value):
     "-i",
     type=int,
     is_eager=True,
-    default=2,
+    default=_DEFAULT_JSON_OUTPUT_INDENT,
     show_default=True,
     help="""JSON indent size in spaces; pass negative number for no
     indent.""",
