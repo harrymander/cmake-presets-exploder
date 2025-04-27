@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Mapping, Sequence
 from itertools import product
 from string import Template as _BaseStringTemplate
-from typing import Annotated, Any, Literal, Optional, TypeVar, Union, cast
+from typing import Annotated, Any, Literal, Optional, TypeVar, Union
 
 from pydantic import (
     BaseModel,
@@ -9,6 +9,7 @@ from pydantic import (
     Discriminator,
     Field,
     Tag,
+    TypeAdapter,
     field_validator,
     model_validator,
 )
@@ -111,8 +112,8 @@ def _base_preset_name(
     return sep.join((prefix, param_name, param_value.name))
 
 
-def _parameter_values_discriminator(
-    values: "ParameterValues",
+def _parameter_serialized_values_discriminator(
+    values: "_ParameterSerializedValues",
 ) -> Optional[str]:
     # The types of dict keys/values or list values do not actually have to be
     # strings (e.g. as in dict[str, str]), as Pydantic will check this. The
@@ -133,25 +134,25 @@ def _parameter_values_discriminator(
 # Using an explicit discriminator improves the error message: without one
 # Pydantic would give a separate validation error for each type in the union,
 # leading to verbose errors.
-ParameterValues = Annotated[
+_ParameterSerializedValues = Annotated[
     Union[
         Annotated[dict[str, str], Tag("dict[str, str]")],
         Annotated[list[str], Tag("list[str]")],
         Annotated[list[ParameterValue], Tag("list[dict]")],
     ],
     Discriminator(
-        _parameter_values_discriminator,
+        _parameter_serialized_values_discriminator,
         custom_error_type="invalid_parameter_values",
         custom_error_message="Invalid parameter values",
     ),
 ]
 
 
-def _validate_parameter_value_list(
-    parameters: ParameterValues,
+def _validate_parameter_serialized_value_list(
+    parameters: _ParameterSerializedValues,
 ) -> list[ParameterValue]:
     """
-    Convert parameter to a list of ParameterValues, checking that the
+    Convert parameter to a list of `ParameterValue`, checking that the
     parameter names are unique.
 
     Each parameter has a 'name' and a 'value'. The name is used for generating
@@ -208,6 +209,12 @@ class _JinjaParameterValue:
         return self.name
 
 
+_ParameterSerializedValuesDict = Annotated[
+    dict[str, _ParameterSerializedValues],
+    Field(min_length=1),
+]
+
+
 class PresetGroup(_Model):
     type: str = Field(
         ...,
@@ -227,7 +234,7 @@ class PresetGroup(_Model):
         description="Name of pre-existing configuration presets to inherit "
         "in all generated presets.",
     )
-    parameters: dict[str, ParameterValues] = Field(
+    parameters: dict[str, list[ParameterValue]] = Field(
         ...,
         min_length=1,
         description="Parameters to generate presets from.",
@@ -239,29 +246,22 @@ class PresetGroup(_Model):
 
     _sep = "-"
 
-    @field_validator("parameters", mode="after")
+    @field_validator(
+        "parameters",
+        mode="before",
+        json_schema_input_type=_ParameterSerializedValuesDict,
+    )
     @classmethod
     def _validate_parameters(
         cls,
-        parameters: dict[str, ParameterValues],
+        value: object,
     ) -> dict[str, list[ParameterValue]]:
-        """
-        Narrow the type of the `parameters` member to
-        `dict[str, list[ParameterValue]]`. We keep the `ParameterValues`
-        in the type annotation so that the JSON schema type is correctly
-        specified.
-        """
+        ta = TypeAdapter(_ParameterSerializedValuesDict)
+        parameters: _ParameterSerializedValuesDict = ta.validate_python(value)
         return {
-            k: _validate_parameter_value_list(v) for k, v in parameters.items()
+            k: _validate_parameter_serialized_value_list(v)
+            for k, v in parameters.items()
         }
-
-    def _parameters_dict(self) -> dict[str, list[ParameterValue]]:
-        """
-        Returns `self.parameters`, casted to `dict[str, list[ParameterValue]]`.
-        The `parameters` attribute will have already been narrowed to this type
-        by `_validate_parameters`, so safe to cast.
-        """
-        return cast(dict[str, list[ParameterValue]], self.parameters)
 
     @model_validator(mode="after")
     def _validate_template_parameters(self) -> "PresetGroup":
@@ -315,7 +315,7 @@ class PresetGroup(_Model):
         )
 
     def _generate_presets_for_single_parameter(self, prefix: str) -> list:
-        param_name, param_values = self._parameters_dict().popitem()
+        param_name, param_values = self.parameters.popitem()
         template = self._get_template(param_name)
         presets = [
             {
@@ -333,7 +333,7 @@ class PresetGroup(_Model):
         Generate base presets for all individual parameters.
         """
         presets: list[dict] = []
-        for param_name, param_values in self._parameters_dict().items():
+        for param_name, param_values in self.parameters.items():
             template = self._get_template(param_name)
             presets.extend(
                 {
@@ -356,7 +356,7 @@ class PresetGroup(_Model):
             return self._generate_presets_for_single_parameter(prefix)
 
         presets = self._generate_base_presets(prefix)
-        parameters = self._parameters_dict()
+        parameters = self.parameters
         for param_values in product(*parameters.values()):
             bases = (
                 _base_preset_name(prefix, self._sep, param_name, param_value)
