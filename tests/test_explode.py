@@ -5,6 +5,7 @@ from typing import Optional
 import pytest
 
 from cmake_presets_exploder import explode_presets
+from cmake_presets_exploder.exploder import Exploder
 
 
 def get_md_json_blocks(text: str) -> list[str]:
@@ -1343,3 +1344,7 @@ def test_multi_param_preset_name_template_fails_with_duplicate() -> None:
         match=r"^duplicate preset name 'configure a'",
     ):
         explode_presets(template_dict(vendor))
+
+
+def test_can_generate_schema() -> None:
+    Exploder.model_json_schema()
