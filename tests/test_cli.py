@@ -342,3 +342,13 @@ def test_toml_error_at_end_of_document(runner: CliRunner) -> None:
            |                     ^
         """
     )
+
+
+def test_json_schema_regression(runner: CliRunner) -> None:
+    with Path(__file__).parent.joinpath("json-schema.json").open() as f:
+        schema_snapshot = json.load(f)
+
+    res = runner.invoke(cli, ["--generate-schema"])
+    assert res.exit_code == 0
+    schema = json.loads(res.output)
+    assert schema == schema_snapshot
