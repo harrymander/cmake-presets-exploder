@@ -50,7 +50,7 @@ toml = [
 [dependency-groups]
 dev = [
     "flake8>=7.1.2",
-    "mypy>=1.15.0",
+    "mypy==1.13.0",  # pinned due to regression in mypy 1.14.0
     "pytest>=8.3.5",
     "ruff>=0.9.9",
 ]
