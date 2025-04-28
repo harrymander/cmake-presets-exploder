@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 from typing import Optional
 
 import pytest
@@ -1346,5 +1347,8 @@ def test_multi_param_preset_name_template_fails_with_duplicate() -> None:
         explode_presets(template_dict(vendor))
 
 
-def test_can_generate_schema() -> None:
-    Exploder.model_json_schema()
+def test_json_schema_regression() -> None:
+    with Path(__file__).parent.joinpath("json-schema.json").open() as f:
+        schema_snapshot = json.load(f)
+
+    assert Exploder.model_json_schema() == schema_snapshot
