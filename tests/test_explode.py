@@ -1348,7 +1348,18 @@ def test_multi_param_preset_name_template_fails_with_duplicate() -> None:
 
 
 def test_json_schema_regression() -> None:
-    with Path(__file__).parent.joinpath("json-schema.json").open() as f:
-        schema_snapshot = json.load(f)
+    import pydantic
+    from packaging.version import Version
 
-    assert Exploder.model_json_schema() == schema_snapshot
+    with Path(__file__).parent.joinpath("json-schema.json").open() as f:
+        snapshot = json.load(f)
+
+    if Version(pydantic.__version__) >= Version("2.11.0"):
+        # pydantic 2.11.0 sets additionalProperties to True for arbitrary
+        # dictionary schemas. See
+        # https://github.com/pydantic/pydantic/pull/11392
+        snapshot["$defs"]["PresetGroup"]["properties"]["templates"][
+            "additionalProperties"
+        ] = True
+
+    assert Exploder.model_json_schema() == snapshot
